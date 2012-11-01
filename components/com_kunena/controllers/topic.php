@@ -176,7 +176,7 @@ class KunenaControllerTopic extends KunenaController {
 		}
 
 		// Update Tags
-		$this->updateTags($message->thread, $fields['tags'], $fields['mytags']);
+		$this->updateTags($message->thread, $fields['tags'], $fields['mytags'], $field['catid']);
 
 		$message->sendNotification();
 
@@ -815,13 +815,13 @@ class KunenaControllerTopic extends KunenaController {
 		$this->app->redirect ( $target->getUrl($this->return, false) );
 	}
 
-	protected function updateTags($topic, $globalTags, $userTags) {
+	protected function updateTags($topic, $globalTags, $userTags, $catid) {
 		$topic = KunenaForumTopicHelper::get($topic);
 		if ($userTags !== null) {
-			$topic->setKeywords($userTags, $this->me->userid);
+			$topic->setKeywords($userTags, $this->me->userid, null, $catid);
 		}
 		if ($globalTags !== null) {
-			$topic->setKeywords($globalTags, false);
+			$topic->setKeywords($globalTags, false, nul, $catid);
 		}
 	}
 

@@ -41,6 +41,14 @@ class KunenaKeywordHelper {
 		return self::$_instances [$keyword];
 	}
 
+	/**
+	 * Remove spaces and all specials characters
+	 *
+	 * @access	public
+	 * @param	keyword		The keyword to clean - with a string
+	 * @return	string		The keyword cleaned
+	 * @since	1.7
+	 */
 	static public function cleanKeyword($keyword) {
 		// Keyword must always be a string
 		if (!is_string($keyword))
@@ -115,7 +123,7 @@ class KunenaKeywordHelper {
 		return $list;
 	}
 
-	static public function setTopicKeywords($keywords, $topicid, $userid, $glue=null) {
+	static public function setTopicKeywords($keywords, $topicid, $userid, $glue=null, $catid) {
 		// Load keywords from the topic
 		if (!isset(self::$_topics [$topicid][$userid])) {
 			self::loadTopics(array($topicid), $userid);
@@ -140,7 +148,49 @@ class KunenaKeywordHelper {
 		return $keywords;
 	}
 
+	/**
+	 * Delete a keyword by topic_id or by category_id
+	 *
+	 * @access	public
+	 * @param	topic_id		The topic to load - by ID
+	 * @param	category_id	    The category to load - by ID
+	 * @return	Boolean
+	 * @since	2.0.3
+	 */
+	static public function deleteKeywords($topic_id=false, $category_id=false) {
+		if($topic_id !== false) {
+			// Load keywords from the topic
+			$db = JFactory::getDBO ();
+			$query = "SELECT * FROM #__kunena_keywords_map AS m INNER JOIN #__kunena_keywords AS k ON m.keyword_id=k.id WHERE m.topic_id={$db->quote($topic_id)}";
+			$db->setQuery ( $query );
+			$results = $db->loadObjectList ();
+			KunenaError::checkDatabaseError ();
+
+			foreach($results as $keyword) {
+				$instance = self::get($keyword->name);
+				$result = $instance->delTopic($keyword->topic_id, $keyword->user_id);
+			}
+
+			return $result;
+		} elseif ( $category_id !== false ) {
+			// Load keywords from the category
+			$db = JFactory::getDBO ();
+			$query = "SELECT * FROM #__kunena_keywords_map AS m INNER JOIN #__kunena_keywords AS k ON m.keyword_id=k.id WHERE m.category_id={$db->quote($category_id)}";
+			$db->setQuery ( $query );
+			$results = $db->loadObjectList ();
+			KunenaError::checkDatabaseError ();
+
+			foreach($results as $keyword) {
+				$instance = self::get($keyword->name);
+				$result = $instance->delTopic($keyword->topic_id, $keyword->user_id);
+			}
+
+			return $result;
+		}
+	}
+
 	static function recount($ids=false) {
+
 	}
 
 	// Internal functions

@@ -221,8 +221,8 @@ class KunenaConfig extends JObject {
 	public $iptracking = 1;
 
 	public $rss_feedburner_url = '';
-	
-	
+
+
 	public function __construct() {
 		parent::__construct ();
 	}
@@ -238,10 +238,6 @@ class KunenaConfig extends JObject {
 
 	public function bind($properties) {
 		$this->setProperties($properties);
-
-		// Disable some experimental features
-		$this->keywords = 0;
-		$this->userkeywords = 0;
 	}
 
 	public function save() {

@@ -629,7 +629,7 @@ class KunenaForumCategory extends KunenaDatabaseObject {
 		// Delete messages
 		$queries[] = "DELETE m, t FROM #__kunena_messages AS m INNER JOIN #__kunena_messages_text AS t ON m.id=t.mesid WHERE m.catid={$db->quote($this->id)}";
 		// TODO: delete attachments
-		// TODO: delete keywords
+		// TODO : Delete keywords
 		// Delete topics
 		$queries[] = "DELETE FROM #__kunena_topics WHERE category_id={$db->quote($this->id)}";
 

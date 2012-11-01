@@ -159,7 +159,7 @@ class KunenaForumTopic extends KunenaDatabaseObject {
 		return $this->_keywords[$user];
 	}
 
-	public function setKeywords($keywords, $user=null, $glue=null) {
+	public function setKeywords($keywords, $user=null, $glue=null, $catid) {
 		$config = KunenaFactory::getConfig();
 		if ($user !== false) {
 			$user = KunenaUserHelper::get($user);
@@ -171,7 +171,7 @@ class KunenaForumTopic extends KunenaDatabaseObject {
 			return false;
 		}
 		$user = (int) $user;
-		$keywords = KunenaKeywordHelper::setTopicKeywords($keywords, $this->id, $user);
+		$keywords = KunenaKeywordHelper::setTopicKeywords($keywords, $this->id, $user, null, $catid);
 		if ($keywords === false)
 			return false;
 		$this->_keywords[$user] = $keywords;
@@ -852,6 +852,8 @@ class KunenaForumTopic extends KunenaDatabaseObject {
 			$queries[] = "DELETE t FROM #__kunena_thankyou AS t INNER JOIN #__kunena_messages AS m ON m.id=t.postid WHERE m.thread={$db->quote($this->id)}";
 			// Delete all messages
 			$queries[] = "DELETE m, t FROM #__kunena_messages AS m INNER JOIN #__kunena_messages_text AS t ON m.id=t.mesid WHERE m.thread={$db->quote($this->id)}";
+			// Delete keywords
+			KunenaKeywordHelper::deleteKeywords($this->id);
 
 			foreach ($queries as $query) {
 				$db->setQuery($query);
