@@ -63,12 +63,28 @@ class KunenaAdminControllerUsers extends KunenaController {
 		if ($deleteSig == 1) {
 			$signature = "";
 		}
-		$avatar = '';
-		if ($deleteAvatar == 1) {
-			$avatar = ",avatar=''";
-		}
 
-		$db->setQuery ( "UPDATE #__kunena_users SET signature={$db->quote($signature)}, view='$newview', ordering='$neworder', rank='$newrank' $avatar WHERE userid='$uid'" );
+		if ($deleteAvatar == 1) $avatar = "avatar=''";
+		else $avatar = '';
+
+		$query = $db->getQuery(true);
+
+		// Fields to update.
+		$fields = array(
+				'signature='.$db->quote($signature),
+				'view=\''.$newview.'\'',
+				'ordering=\''.$neworder.'\'',
+				'rank=\''.$newrank.'\''
+				);
+
+		if ( !empty($avatar) ) array_push($fields, $avatar);
+
+		// Conditions for which records should be updated.
+		$conditions = array('userid=\''.$uid.'\'');
+
+		$query->update($db->quoteName('#__kunena_users'))->set($fields)->where($conditions);
+		$db->setQuery($query);
+
 		$db->query ();
 		if (KunenaError::checkDatabaseError()) return;
 

@@ -62,11 +62,40 @@ class KunenaAdminControllerSmilies extends KunenaController {
 		$smileyid = JRequest::getInt( 'smileyid', 0 );
 
 		if ( !$smileyid ) {
-			$db->setQuery ( "INSERT INTO #__kunena_smileys SET code = '$smiley_code', location = '$smiley_location', emoticonbar = '$smiley_emoticonbar'" );
+			$query = $db->getQuery(true);
+
+			// Insert columns.
+			$columns = array('code', 'location', 'emoticonbar');
+
+			// Insert values.
+			$values = array($db->quote($smiley_code), $db->quote($smiley_location), $db->quote($smiley_emoticonbar));
+
+			// Prepare the insert query.
+			$query
+			->insert($db->quoteName('#__kunena_smileys'))
+			->columns($db->quoteName($columns))
+			->values(implode(',', $values));
+
+			// Reset the query using our newly populated query object.
+			$db->setQuery($query);
 			$db->query ();
 			if (KunenaError::checkDatabaseError()) return;
 		} else {
-			$db->setQuery ( "UPDATE #__kunena_smileys SET code = '$smiley_code', location = '$smiley_location', emoticonbar = '$smiley_emoticonbar' WHERE id = '$smileyid'" );
+			$query = $db->getQuery(true);
+
+			// Fields to update.
+			$fields = array(
+					'code = \''.$smiley_code.'\'',
+					'location = \''.$smiley_location.'\'',
+					'emoticonbar = \''.$smiley_emoticonbar.'\''
+			);
+
+			// Conditions for which records should be updated.
+			$conditions = array('id = '.$db->quote($smileyid));
+
+			$query->update($db->quoteName('#__kunena_smileys'))->set($fields)->where($conditions);
+
+			$db->setQuery($query);
 			$db->query ();
 			if (KunenaError::checkDatabaseError()) return;
 		}
@@ -107,7 +136,13 @@ class KunenaAdminControllerSmilies extends KunenaController {
 		$cids = JRequest::getVar ( 'cid', array (), 'post', 'array' );
 		$cids = implode ( ',', $cids );
 		if ($cids) {
-			$db->setQuery ( "DELETE FROM #__kunena_smileys WHERE id IN ($cids)" );
+			$query = $db->getQuery(true);
+
+			$conditions = array('id IN ('.$cids.')');
+
+			$query->delete($db->quoteName('#__kunena_smileys'));
+			$query->where($conditions);
+			$db->setQuery($query);
 			$db->query ();
 			if (KunenaError::checkDatabaseError()) return;
 		}

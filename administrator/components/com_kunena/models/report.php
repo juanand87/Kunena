@@ -292,35 +292,17 @@ class KunenaAdminModelReport extends KunenaModel {
 	 * @since	1.6
 	 */
 	protected function _getTablesCollation() {
-		$kunena_db = JFactory::getDBO ();
+		$db = JFactory::getDBO ();
 
 		// Check each table in the database if the collation is on utf8
-		$tableslist = $kunena_db->getTableList();
+		$tableslist = $db->getTableList();
 		$collation = '';
 		foreach($tableslist as $table) {
 			if (preg_match('`_kunena_`',$table)) {
-				// TODO : need to find a way to rewrite this query with JDatabaseQuery
-				$kunena_db->setQuery("SHOW FULL FIELDS FROM " .$table. "");
-				$fullfields = $kunena_db->loadObjectList ();
-				if (KunenaError::checkDatabaseError()) return;
-
-				$fieldTypes = array('tinytext','text','char','varchar');
-
-				foreach ($fullfields as $row) {
-					$tmp = strpos ( $row->Type , '(' );
-
-					if ($tmp) {
-						if ( in_array(substr($row->Type,0,$tmp),$fieldTypes) ) {
-							if(!empty($row->Collation) && !preg_match('`utf8`',$row->Collation)) {
-								$collation .= $table.' [color=#FF0000]have wrong collation of type '.$row->Collation.' [/color] on field '.$row->Field.'  ';
-							}
-						}
-					} else {
-						if ( in_array($row->Type,$fieldTypes) ) {
-							if(!empty($row->Collation) && !preg_match('`utf8`',$row->Collation)) {
-								$collation .= $table.' [color=#FF0000]have wrong collation of type '.$row->Collation.' [/color] on field '.$row->Field.'  ';
-							}
-						}
+				$fullfields = $db->getTableFields($table, false);
+				foreach($fullfields as $fields) {
+					foreach($fields as $field) {
+						if(!empty($field->Collation) && !preg_match('`utf8`',$field->Collation)) $collation .= $table.' [color=#FF0000]have wrong collation of type '.$field->Collation.' [/color] on field '.$field->Field.'  ';
 					}
 				}
 			}

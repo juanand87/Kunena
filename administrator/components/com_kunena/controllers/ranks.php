@@ -66,11 +66,41 @@ class KunenaAdminControllerRanks extends KunenaController {
 
 
 		if ( !$rankid ) {
-			$db->setQuery ( "INSERT INTO #__kunena_ranks SET rank_title = '$rank_title', rank_image = '$rank_image', rank_special = '$rank_special', rank_min = '$rank_min'" );
+			$query = $db->getQuery(true);
+
+			// Insert columns.
+			$columns = array('rank_title', 'rank_image', 'rank_special', 'rank_min');
+
+			// Insert values.
+			$values = array($db->quote($rank_title), $db->quote($rank_image), $db->quote($rank_special), $db->quote($rank_min));
+
+			// Prepare the insert query.
+			$query
+			->insert($db->quoteName('#__kunena_ranks'))
+			->columns($db->quoteName($columns))
+			->values(implode(',', $values));
+
+			// Reset the query using our newly populated query object.
+			$db->setQuery($query);
 			$db->query ();
 			if (KunenaError::checkDatabaseError()) return;
 		} else {
-			$db->setQuery ( "UPDATE #__kunena_ranks SET rank_title = '$rank_title', rank_image = '$rank_image', rank_special = '$rank_special', rank_min = '$rank_min' WHERE rank_id = '$rankid'" );
+			$query = $db->getQuery(true);
+
+			// Fields to update.
+			$fields = array(
+					'rank_title = \''.$rank_title.'\'',
+					'rank_image = \''.$rank_image.'\'',
+					'rank_special = \''.$rank_special.'\'',
+					'rank_min = \''.$rank_min.'\''
+					);
+
+			// Conditions for which records should be updated.
+			$conditions = array('rank_id = '.$db->quote($rankid));
+
+			$query->update($db->quoteName('#__kunena_ranks'))->set($fields)->where($conditions);
+
+			$db->setQuery($query);
 			$db->query ();
 			if (KunenaError::checkDatabaseError()) return;
 		}
@@ -111,7 +141,13 @@ class KunenaAdminControllerRanks extends KunenaController {
 		$cids = JRequest::getVar ( 'cid', array (), 'post', 'array' );
 		$cids = implode ( ',', $cids );
 		if ($cids) {
-			$db->setQuery ( "DELETE FROM #__kunena_ranks WHERE rank_id IN ($cids)" );
+			$query = $db->getQuery(true);
+
+			$conditions = array('rank_id IN ('.$cids.')');
+
+			$query->delete($db->quoteName('#__kunena_ranks'));
+			$query->where($conditions);
+			$db->setQuery($query);
 			$db->query ();
 			if (KunenaError::checkDatabaseError()) return;
 		}
