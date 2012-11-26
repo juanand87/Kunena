@@ -44,14 +44,20 @@ class KunenaAdminModelSmilies extends KunenaModel {
 
 	public function getSmileys() {
 		$db = JFactory::getDBO ();
+		$query = $db->getQuery(true);
 
-		$db->setQuery ( "SELECT COUNT(*) FROM #__kunena_smileys" );
+		$query->select(array('COUNT(*)'));
+		$query->from('#__kunena_smileys');
+		$db->setQuery($query);
 		$total = $db->loadResult ();
 		if (KunenaError::checkDatabaseError()) return;
 
 		$this->setState ( 'list.total',$total );
 
-		$db->setQuery ( "SELECT * FROM #__kunena_smileys", $this->getState ( 'list.start'), $this->getState ( 'list.limit') );
+		$query = $db->getQuery(true);
+		$query->select(array('smil.*'));
+		$query->from('#__kunena_smileys AS smil');
+		$db->setQuery ( $query, $this->getState ( 'list.start'), $this->getState ( 'list.limit') );
 		$smileys = $db->loadObjectList ();
 		if (KunenaError::checkDatabaseError()) return;
 
@@ -62,7 +68,11 @@ class KunenaAdminModelSmilies extends KunenaModel {
 		$db = JFactory::getDBO ();
 
 		if ($this->getState ( 'item.id' )) {
-			$db->setQuery ( "SELECT * FROM #__kunena_smileys WHERE id = '{$this->getState('item.id')}'" );
+			$query = $db->getQuery(true);
+			$query->select(array('smil.*'));
+			$query->from('#__kunena_smileys AS smil');
+			$query->where('id = \''.$this->getState('item.id').'\'');
+			$db->setQuery($query);
 			$selected = $db->loadObject ();
 			if (KunenaError::checkDatabaseError ())
 				return;

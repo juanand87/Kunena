@@ -44,14 +44,19 @@ class KunenaAdminModelRanks extends KunenaModel {
 
 	public function getRanks() {
 		$db = JFactory::getDBO ();
-
-		$db->setQuery ( "SELECT COUNT(*) FROM #__kunena_ranks" );
+		$query = $db->getQuery(true);
+		$query->select(array('COUNT(*)'));
+		$query->from('#__kunena_ranks');
+		$db->setQuery($query);
 		$total = $db->loadResult ();
 		if (KunenaError::checkDatabaseError()) return;
 
 		$this->setState ( 'list.total',$total );
 
-		$db->setQuery ( "SELECT * FROM #__kunena_ranks", $this->getState ( 'list.start'), $this->getState ( 'list.limit') );
+		$query = $db->getQuery(true);
+		$query->select(array('r.*'));
+		$query->from('#__kunena_ranks AS r');
+		$db->setQuery ( $query, $this->getState ( 'list.start'), $this->getState ( 'list.limit') );
 		$ranks = $db->loadObjectList ();
 		if (KunenaError::checkDatabaseError()) return;
 
@@ -62,7 +67,11 @@ class KunenaAdminModelRanks extends KunenaModel {
 		$db = JFactory::getDBO ();
 
 		if ( $this->getState('item.id') ) {
-			$db->setQuery ( "SELECT * FROM #__kunena_ranks WHERE rank_id = '{$this->getState('item.id')}'" );
+			$query = $db->getQuery(true);
+			$query->select(array('r.*'));
+			$query->from('#__kunena_ranks AS r');
+			$query->where('rank_id = \''.$this->getState('item.id').'\'');
+			$db->setQuery($query);
 			$selected = $db->loadObject ();
 			if (KunenaError::checkDatabaseError()) return;
 

@@ -32,7 +32,7 @@ class KunenaAdminModelAttachments extends KunenaModel {
 		$value = $this->getUserStateFromRequest ( "com_kunena.admin.attachments.list.limit", 'limit', $this->app->getCfg ( 'list_limit' ), 'int' );
 		$this->setState ( 'list.limit', $value );
 
-		$value = $this->getUserStateFromRequest ( 'com_kunena.admin.attachments.list.ordering', 'filter_order', 'filename', 'cmd' );
+		$value = $this->getUserStateFromRequest ( 'com_kunena.admin.attachments.list.ordering', 'filter_order', 'a.filename', 'cmd' );
 		$this->setState ( 'list.ordering', $value );
 
 		$value = $this->getUserStateFromRequest ( "com_kunena.admin.attachments.list.start", 'limitstart', 0, 'int' );
@@ -50,20 +50,36 @@ class KunenaAdminModelAttachments extends KunenaModel {
 	public function getItems() {
 		$db = JFactory::getDBO ();
 
-		$where = '';
+		// TODO : implement search function in view
+
+		$orderby = $this->getState ( 'list.ordering' ) .' '. $this->getState ( 'list.direction' );
+
+		$query = $db->getQuery(true);
+		$query->select(array('COUNT(*)'));
+		$query->from('#__kunena_attachments AS a');
+		$query->join('LEFT', '#__kunena_messages AS mes ON (a.mesid=mes.id)');
 		if ($this->getState ( 'list.search' )) {
-			$where = ' WHERE LOWER( a.filename ) LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false ).' OR LOWER( a.filetype ) LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false );
+			$where = ' LOWER( a.filename ) LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false ).' OR LOWER( a.filetype ) LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false );
+			$query->where($where);
 		}
+		$query->order($orderby);
 
-		$orderby = ' ORDER BY '. $this->getState ( 'list.ordering' ) .' '. $this->getState ( 'list.direction' );
-
-		$db->setQuery ( "SELECT COUNT(*) FROM #__kunena_attachments AS a LEFT JOIN #__kunena_messages AS b ON a.mesid=b.id".$where.$orderby);
+		$db->setQuery($query);
 		$total = $db->loadResult ();
 		KunenaError::checkDatabaseError();
 
 		$this->setState ( 'list.total', $total );
 
-		$query = "SELECT a.*, b.catid, b.thread FROM #__kunena_attachments AS a LEFT JOIN #__kunena_messages AS b ON a.mesid=b.id".$where.$orderby;
+		$query = $db->getQuery(true);
+		$query->select(array('a.*', 'mes.catid', 'mes.thread'));
+		$query->from('#__kunena_attachments AS a');
+		$query->join('LEFT', '#__kunena_messages AS mes ON (a.mesid=mes.id)');
+		if ($this->getState ( 'list.search' )) {
+			$where = ' LOWER( a.filename ) LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false ).' OR LOWER( a.filetype ) LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false );
+			$query->where($where);
+		}
+		$query->order($orderby);
+
 		$db->setQuery ( $query, $this->getState ( 'list.start'), $this->getState ( 'list.limit') );
 		$uploaded = $db->loadObjectlist();
 		if (KunenaError::checkDatabaseError()) return;

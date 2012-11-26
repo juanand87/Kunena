@@ -231,9 +231,12 @@ class KunenaAdminModelReport extends KunenaModel {
 	 */
 	protected function _getJoomlaTemplate() {
 		$db = JFactory::getDBO ();
+		$query = $db->getQuery(true);
 
 		// Get Joomla! frontend assigned template
-		$query = "SELECT template FROM #__template_styles WHERE client_id=0 AND home=1";
+		$query->select(array('template'));
+		$query->from('#__template_styles');
+		$query->where('client_id=0 AND home=1');
 
 		$db->setQuery($query);
 		$template = $db->loadResult();
@@ -296,6 +299,7 @@ class KunenaAdminModelReport extends KunenaModel {
 		$collation = '';
 		foreach($tableslist as $table) {
 			if (preg_match('`_kunena_`',$table)) {
+				// TODO : need to find a way to rewrite this query with JDatabaseQuery
 				$kunena_db->setQuery("SHOW FULL FIELDS FROM " .$table. "");
 				$fullfields = $kunena_db->loadObjectList ();
 				if (KunenaError::checkDatabaseError()) return;

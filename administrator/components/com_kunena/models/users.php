@@ -50,36 +50,42 @@ class KunenaAdminModelUsers extends KunenaModel {
 	public function getUsers() {
 		$db = JFactory::getDBO ();
 
-		$order = '';
-		if ($this->getState('list.ordering') == 'id') {
-			$order = ' ORDER BY u.id '. $this->getState('list.direction');
-		} else if ($this->getState('list.ordering') == 'username') {
-			$order = ' ORDER BY u.username '. $this->getState('list.direction');
-		} else if ($this->getState('list.ordering') == 'name') {
-			$order = ' ORDER BY u.name '. $this->getState('list.direction');
-		} else if ($this->getState('list.ordering') == 'moderator') {
-			$order = ' ORDER BY ku.moderator '. $this->getState('list.direction');
-		}
-
 		$where = '';
 		if ( $this->getState('list.search') ) {
-		  $where = ' WHERE u.username LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false ).' OR u.email LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false ).' OR u.name LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false );
-
+			$where = ' u.username LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false ).' OR u.email LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false ).' OR u.name LIKE '.$db->Quote( '%'.$db->escape( $this->getState ( 'list.search' ), true ).'%', false );
 		}
 
-		$db->setQuery ( "SELECT COUNT(*) FROM #__kunena_users AS ku
-		INNER JOIN #__users AS u ON ku.userid=u.id {$where}
-		");
+		$query = $db->getQuery(true);
+		$query->select(array('COUNT(*)'));
+		$query->from('#__kunena_users AS ku');
+		$query->join('INNER', '#__users AS u ON (ku.userid=u.id)');
+		if ( !empty($where) ) $query->where($where);
+
+		$db->setQuery($query);
 		$total = $db->loadResult ();
 		KunenaError::checkDatabaseError();
 
+		$order = '';
+		if ($this->getState('list.ordering') == 'id') {
+			$order = ' u.id '. $this->getState('list.direction');
+		} else if ($this->getState('list.ordering') == 'username') {
+			$order = ' u.username '. $this->getState('list.direction');
+		} else if ($this->getState('list.ordering') == 'name') {
+			$order = ' u.name '. $this->getState('list.direction');
+		} else if ($this->getState('list.ordering') == 'moderator') {
+			$order = ' ku.moderator '. $this->getState('list.direction');
+		}
+
 		$this->setState ( 'list.total', $total );
 
-		$db->setQuery ( "SELECT u.id, u.username, u.name, ku.moderator
-		FROM #__kunena_users AS ku
-		INNER JOIN #__users AS u ON ku.userid=u.id {$where}
-		{$order}
-		", $this->getState ( 'list.start'), $this->getState ( 'list.limit') );
+		$query = $db->getQuery(true);
+		$query->select(array('u.id', 'u.username', 'u.name', 'ku.moderator'));
+		$query->from('#__kunena_users AS ku');
+		$query->join('INNER', '#__users AS u ON (ku.userid=u.id)');
+		if ( !empty($where) ) $query->where($where);
+		if ( !empty($order) ) $query->order($order);
+
+		$db->setQuery ( $query, $this->getState ( 'list.start'), $this->getState ( 'list.limit') );
 
 		$users = $db->loadObjectList ();
 		if (KunenaError::checkDatabaseError()) return;
@@ -99,7 +105,11 @@ class KunenaAdminModelUsers extends KunenaModel {
 		$db = JFactory::getDBO ();
 		$userid = $this->app->getUserState ( 'kunena.user.userid');
 
-		$db->setQuery ( "SELECT topic_id AS thread FROM #__kunena_user_topics WHERE user_id='$userid' AND subscribed=1" );
+		$query = $db->getQuery(true);
+		$query->select(array('topic_id AS thread'));
+		$query->from('#__kunena_user_topics');
+		$query->where('user_id=\''.$userid.'\' AND subscribed=1');
+		$db->setQuery ( $query );
 		$subslist = $db->loadObjectList ();
 		if (KunenaError::checkDatabaseError()) return;
 
@@ -110,7 +120,11 @@ class KunenaAdminModelUsers extends KunenaModel {
 		$db = JFactory::getDBO ();
 		$userid = $this->app->getUserState ( 'kunena.user.userid');
 
-		$db->setQuery ( "SELECT category_id FROM #__kunena_user_categories WHERE user_id={$userid}" );
+		$query = $db->getQuery(true);
+		$query->select(array('category_id'));
+		$query->from('#__kunena_user_categories');
+		$query->where('user_id=\''.$userid.'\'');
+		$db->setQuery ( $query );
 		$subscatslist = $db->loadObjectList ();
 		if (KunenaError::checkDatabaseError()) return;
 
@@ -121,14 +135,26 @@ class KunenaAdminModelUsers extends KunenaModel {
 		$db = JFactory::getDBO ();
 		$userid = $this->app->getUserState ( 'kunena.user.userid');
 
-		$db->setQuery ( "SELECT ip FROM #__kunena_messages WHERE userid='$userid' GROUP BY ip" );
+		$query = $db->getQuery(true);
+		$query->select(array('ip'));
+		$query->from('#__kunena_messages');
+		$query->where('userid=\''.$userid.'\'');
+		$query->qroup('ip');
+		$db->setQuery ( $query );
 		$iplist = implode("','", $db->loadColumn ());
 		if (KunenaError::checkDatabaseError()) return;
 
 		$list = array();
 		if ($iplist) {
 			$iplist = "'{$iplist}'";
-			$db->setQuery ( "SELECT m.ip,m.userid,u.username,COUNT(*) as mescnt FROM #__kunena_messages AS m INNER JOIN #__users AS u ON m.userid=u.id WHERE m.ip IN ({$iplist}) GROUP BY m.userid,m.ip" );
+			$query = $db->getQuery(true);
+			$query->select(array('m.ip', 'm.userid', 'u.username', 'COUNT(*) as mescnt'));
+			$query->from('#__kunena_messages AS m');
+			$query->join('INNER', '#__users AS u ON (m.userid=u.id)');
+			$query->where('m.ip IN ('.$iplist.')');
+			$query->group('m.userid,m.ip');
+
+			$db->setQuery ( $query );
 			$list = $db->loadObjectlist ();
 		if (KunenaError::checkDatabaseError()) return;
 		}
@@ -160,7 +186,12 @@ class KunenaAdminModelUsers extends KunenaModel {
 		$db = JFactory::getDBO ();
 		$user = $this->getUser();
 		//grab all special ranks
-		$db->setQuery ( "SELECT * FROM #__kunena_ranks WHERE rank_special = '1'" );
+		$query = $db->getQuery(true);
+		$query->select(array('r.*'));
+		$query->from('#__kunena_ranks AS r');
+		$query->where('rank_special = \'1\'');
+		$db->setQuery ( $query );
+
 		$specialRanks = $db->loadObjectList ();
 		if (KunenaError::checkDatabaseError()) return;
 
@@ -184,7 +215,13 @@ class KunenaAdminModelUsers extends KunenaModel {
 		if (!$userids) return $userids;
 
 		$userids = implode(',', $userids);
-		$db->setQuery ( "SELECT id,username FROM #__users WHERE id IN(".$userids.")" );
+
+		$query = $db->getQuery(true);
+		$query->select(array('id', 'username'));
+		$query->from('#__users');
+		$query->where('id IN('.$userids.')');
+		$db->setQuery ( $query );
+
 		$userids = $db->loadObjectList ();
 		if (KunenaError::checkDatabaseError()) return;
 
