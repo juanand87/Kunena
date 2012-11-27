@@ -373,7 +373,12 @@ class KunenaModelInstall extends JModelLegacy {
 	}
 
 	function uninstallModule($name) {
-		$query = "SELECT extension_id FROM #__extensions WHERE type='module' AND element='{$name}'";
+		$query = $this->db->getQuery(true);
+
+		$query->select(array('extension_id'));
+		$query->from('#__extensions');
+		$query->where('type='.$this->db->quote('module').' AND element='.$this->db->quote($name));
+
 		$this->db->setQuery ( $query );
 		$moduleid = $this->db->loadResult ();
 		if ($moduleid) {
@@ -383,7 +388,12 @@ class KunenaModelInstall extends JModelLegacy {
 	}
 
 	function uninstallPlugin($folder, $name) {
-		$query = "SELECT extension_id FROM #__extensions WHERE type='plugin' AND folder='{$folder}' AND element='{$name}'";
+		$query = $this->db->getQuery(true);
+
+		$query->select(array('extension_id'));
+		$query->from('#__extensions');
+		$query->where('type='.$this->db->quote('plugin').' AND element='.$this->db->quote($folder).' AND element='.$this->db->quote($name));
+
 		$this->db->setQuery ( $query );
 		$pluginid = $this->db->loadResult ();
 		if ($pluginid) {
@@ -730,7 +740,9 @@ class KunenaModelInstall extends JModelLegacy {
 			$tables = $this->listTables ( $version->prefix );
 			$cfgtable = "{$version->prefix}config";
 			if (isset($tables[$cfgtable])) {
-				$this->db->setQuery ( "SELECT * FROM #__{$cfgtable}" );
+				$query = $this->db->getQuery(true);
+				$query->select(array('cfg.*'));
+				$query->from('#__'.$cfgtable.' AS cfg');
 				$config->bind((array) $this->db->loadAssoc ());
 				$config->id = 1;
 			}
@@ -945,8 +957,21 @@ class KunenaModelInstall extends JModelLegacy {
 				$success = true;
 			}
 			if ($success) {
-				$query = "UPDATE #__kunena_users SET avatar={$this->db->quote($newfile)} WHERE userid={$this->db->quote($userid)}";
-				$this->db->setQuery ( $query );
+				$query = $this->db->getQuery(true);
+
+				// Fields to update.
+				$fields = array(
+						'avatar='.$this->db->quote($newfile)
+						);
+
+				// Conditions for which records should be updated.
+				$conditions = array(
+						'userid='.$this->db->quote($userid)
+						);
+
+				$query->update($this->db->quoteName('#__kunena_users'))->set($fields)->where($conditions);
+
+				$this->db->setQuery( $query );
 				$this->db->query ();
 				if ($this->db->getErrorNum ())
 					throw new KunenaInstallerException ( $this->db->getErrorMsg (), $this->db->getErrorNum () );
@@ -1106,8 +1131,24 @@ class KunenaModelInstall extends JModelLegacy {
 				$stat = stat($destfile);
 				$size = (int)$stat['size'];
 				$hash = md5_file ( $destfile );
-				$query = "UPDATE #__kunena_attachments SET folder='media/kunena/attachments/legacy/{$lastpath}', size={$this->db->quote($size)}, hash={$this->db->quote($hash)}, filetype={$this->db->quote($attachment->filetype)}
-					WHERE id={$this->db->quote($attachment->id)}";
+
+				$query = $this->db->getQuery(true);
+
+				// Fields to update.
+				$fields = array(
+						'folder=media/kunena/attachments/legacy/{$lastpath}',
+						'size='.$this->db->quote($size),
+						'hash='.$this->db->quote($hash),
+						'filetype='.$this->db->quote($attachment->filetype)
+						);
+
+				// Conditions for which records should be updated.
+				$conditions = array(
+						'id='.$this->db->quote($attachment->id)
+						);
+
+				$query->update($this->db->quoteName('#__kunena_attachments'))->set($fields)->where($conditions);
+
 				$this->db->setQuery ( $query );
 				$this->db->query ();
 				if ($this->db->getErrorNum ())
@@ -1280,8 +1321,15 @@ class KunenaModelInstall extends JModelLegacy {
 
 		if ($versionprefix) {
 			// Version table exists, try to get installed version
-			$state = $state ? " WHERE state=''" : "";
-			$this->db->setQuery ( "SELECT * FROM " . $this->db->quoteName ( $this->db->getPrefix () . $versionprefix . 'version' ) . $state . " ORDER BY `id` DESC", 0, 1 );
+			$state = $state ? " state=''" : "";
+
+			$query = $this->db->getQuery(true);
+			$query->select(array('*'));
+			$query->from($this->db->getPrefix () . $versionprefix . 'version');
+			if ( !empty($state) ) $query->where($where);
+			$query->order('id DESC');
+
+			$this->db->setQuery ( $query, 0, 1 );
 			$version = $this->db->loadObject ();
 			if ($this->db->getErrorNum ())
 				throw new KunenaInstallerException ( $this->db->getErrorMsg (), $this->db->getErrorNum () );
@@ -1498,13 +1546,20 @@ class KunenaModelInstall extends JModelLegacy {
 
 	// also insert old version if not in the table
 	protected function insertVersionData($version, $versiondate, $versionname, $state = '') {
-		$this->db->setQuery ( "INSERT INTO `#__kunena_version` SET
-			`version` = {$this->db->quote($version)},
-			`versiondate` = {$this->db->quote($versiondate)},
-			`installdate` = CURDATE(),
-			`versionname` = {$this->db->quote($versionname)},
-			`state` = {$this->db->quote($state)}");
-		$this->db->query ();
+		$query = $this->db->getQuery(true);
+
+		// Insert columns.
+		$columns = array('version', 'versiondate', 'installdate', 'versionname', 'state');
+
+		// TODO : replace CURDATE() with agnostic function
+		$values = array($this->db->quote($version), $this->db->quote($versiondate), 'CURDATE()', $this->db->quote($versionname), $this->db->quote($state));
+
+		// Prepare the insert query.
+		$query
+		->insert($this->db->quoteName('#__kunena_version'))
+		->columns($this->db->quoteName($columns))
+		->values(implode(',', $values));
+		$this->db->setQuery($query);
 		if ($this->db->getErrorNum ())
 			throw new KunenaInstallerException ( $this->db->getErrorMsg (), $this->db->getErrorNum () );
 	}
@@ -1582,8 +1637,19 @@ class KunenaModelInstall extends JModelLegacy {
 		$component_id = JComponentHelper::getComponent ( 'com_kunena' )->id;
 
 		// First fix all broken menu items
-		$query = "UPDATE #__menu SET component_id={$this->db->quote($component_id)} WHERE type = 'component' AND link LIKE '%option=com_kunena%'";
-		$this->db->setQuery ( $query );
+		$query = $this->db->getQuery(true);
+
+		// Fields to update.
+		$fields = array('component_id='.$this->db->quote($component_id));
+
+		// Conditions for which records should be updated.
+		$conditions = array(
+				'type = \'component\'',
+				'link LIKE \'%option=com_kunena%\'');
+
+		$query->update($this->db->quoteName('#__menu'))->set($fields)->where($conditions);
+
+		$this->db->setQuery($query);
 		$this->db->query ();
 		if ($this->db->getErrorNum ())
 			throw new KunenaInstallerException ( $this->db->getErrorMsg (), $this->db->getErrorNum () );
